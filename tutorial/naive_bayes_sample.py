@@ -78,8 +78,8 @@ def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
     """
     判断大小
     """
-    p1 = sum(vec2Classify * p1Vec) + np.log(pClass1)
-    p0 = sum(vec2Classify * p0Vec) + np.log(1 - pClass1)
+    p1 = sum(vec2Classify * p1Vec) * pClass1
+    p0 = sum(vec2Classify * p0Vec) * (1 - pClass1)
     if p1 > p0:
         return 1
     else:
@@ -89,14 +89,23 @@ def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
 def testingNB():
     listOPosts, listClasses = loadDataSet()
     myVocabList = createVocabList(listOPosts)
+    print(myVocabList)
     trainMat = []
     for postinDoc in listOPosts:
         trainMat.append(setOfWords2Vec(myVocabList, postinDoc))
+    print(np.array(trainMat).shape)
     p0V, p1V, pAb = trainNB0(np.array(trainMat), np.array(listClasses))
+    # print(p0V.shape)
     testEntry = ['love', 'my', 'dalmation']
     thisDoc = np.array(setOfWords2Vec(myVocabList, testEntry))
     print(testEntry, 'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
     testEntry = ['stupid', 'garbage']
+    thisDoc = np.array(setOfWords2Vec(myVocabList, testEntry))
+    print(testEntry, 'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
+    testEntry = ['maybe', 'not', 'take', 'him', 'to', 'dog', 'park', 'stupid']
+    thisDoc = np.array(setOfWords2Vec(myVocabList, testEntry))
+    print(testEntry, 'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
+    testEntry = ['mr', 'licks', 'ate', 'my', 'steak', 'how', 'to', 'stop', 'him']
     thisDoc = np.array(setOfWords2Vec(myVocabList, testEntry))
     print(testEntry, 'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
 
