@@ -3,7 +3,7 @@ import numpy as np
 
 
 def read_file():
-    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
+    folder_path = '/Users/andrewzhan/Downloads/'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
         data = np.copy(H['data'])
     with h5py.File(folder_path + 'labels_training.h5', 'r') as H:
@@ -27,7 +27,7 @@ def create_vocab_list(data, num_column):
 def set_of_pixel_to_vector(vocab, pic_data):
     return_vector = [0] * len(vocab)
     for i, pixel in enumerate(pic_data):
-        if pixel > 0:
+        if pixel >= 128:
             return_vector[i] = 1
     return return_vector
 
@@ -59,8 +59,8 @@ def classify_naive_bayes(pic_data, pv, label_per):
 if __name__ == "__main__":
     data_set, labels = read_file()
     formed_data = reduce_demension(data_set)
-    # formed_data = formed_data[:1000]
-    # labels = labels[:1000]
+    formed_data = formed_data[:1000]
+    labels = labels[:1000]
     print(formed_data.shape)
     num_pic, num_pixel = formed_data.shape
     vocab_matrix = create_vocab_list(formed_data, num_pixel)
