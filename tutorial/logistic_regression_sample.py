@@ -5,48 +5,60 @@ from scipy.optimize import minimize
 
 
 def read_file():
-    folder_path = '/Users/andrewzhan/Downloads/'
+    # folder_path = '/Users/andrewzhan/Downloads/'
+    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
-        data = np.copy(H['data'])
+        train_set_x_orig = np.copy(H['data'])
     with h5py.File(folder_path + 'labels_training.h5', 'r') as H:
-        label = np.copy(H['label'])
-    return data, label
+        train_set_y_orig = np.copy(H['label'])
+        # train_set_y_orig = train_set_y_orig.reshape(1, train_set_y_orig.shape[0])
 
-
-def reduce_demension(data):
-    new_data = []
-    for pic in data:
-        new_row = np.concatenate(pic, axis=None)
-        new_data.append(new_row)
-    return np.array(new_data)
+    with h5py.File(folder_path + 'images_testing.h5', 'r') as H:
+        test_set_x_orig = np.copy(H['data'])[:2000]
+    with h5py.File(folder_path + 'labels_testing_2000.h5', 'r') as H:
+        test_set_y_orig = np.copy(H['label'])
+        # test_set_y_orig = test_set_y_orig.reshape(1, test_set_y_orig.shape[0])
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig
 
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 
-def cost(theta, X, y, learningRate):
-    theta = np.matrix(theta)
-    X = np.matrix(X)
-    y = np.matrix(y)
-    first = np.multiply(-y, np.log(sigmoid(X * theta.T)))
-    second = np.multiply((1 - y), np.log(1 - sigmoid(X * theta.T)))
-    reg = (learningRate / 2 * len(X)) * np.sum(np.power(theta[:, 1:theta.shape[1]], 2))
-    return np.sum(first - second) / (len(X)) + reg
+def cost(w, X, y, learningRate):
+    # w = np.matrix(w)
+    # X = np.matrix(X)
+    # y = np.matrix(y)
+    # first = np.multiply(-y, np.log(sigmoid(X * w.T)))
+    # second = np.multiply((1 - y), np.log(1 - sigmoid(X * w.T)))
+    # reg = (learningRate / 2 * len(X)) * np.sum(np.power(w[:, 1:w.shape[1]], 2))
+    # the_cost = np.sum(first - second) / (len(X)) + reg
+    # print(the_cost)
+    m = X.shape[1]
+    z = np.dot(X, w.T)
+    A = sigmoid(z)
+    the_cost = np.sum(np.multiply(y, np.log(A)) + np.multiply(1 - y, np.log(1 - A))) / (-m)
+    the_cost = np.squeeze(the_cost)
+
+    # print(the_cost)
+    if np.isnan(the_cost):
+        return np.inf
+    return the_cost
 
 
 def gradient(theta, X, y, learningRate):
     theta = np.matrix(theta)
     X = np.matrix(X)
     y = np.matrix(y)
+    m = len(X)
 
-    parameters = int(theta.ravel().shape[1])
+    # parameters = int(theta.ravel().shape[1])
     error = sigmoid(X * theta.T) - y
 
-    grad = ((X.T * error) / len(X)).T + ((learningRate / len(X)) * theta)
+    grad = ((X.T * error) / m).T + ((learningRate / m) * theta)
 
     # intercept gradient is not regularized
-    grad[0, 0] = np.sum(np.multiply(error, X[:, 0])) / len(X)
+    grad[0, 0] = np.sum(np.multiply(error, X[:, 0])) / m
 
     return np.array(grad).ravel()
 
@@ -55,21 +67,21 @@ def one_vs_all(X, y, num_labels, learning_rate):
     rows = X.shape[0]  # X的行数
     params = X.shape[1]  # X的列数
 
-    # 对于k个分类器，构建k*（n+1）维向量组
+    # 对于k个分类器，构建k*（n+1）维向量组 (10, 785)
     all_theta = np.zeros((num_labels, params + 1))
 
     # 在X第一列之前插入一列全为1的列向量作为常数项
     X = np.insert(X, 0, values=np.ones(rows), axis=1)
 
     # 对于y若将某个类别i拿出来之后剩下的类别构成一类
-    for i in range(1, num_labels + 1):
+    for i in range(0, num_labels):
         theta = np.zeros(params + 1)
         y_i = np.array([1 if label == i else 0 for label in y])
         y_i = np.reshape(y_i, (rows, 1))
 
         # 采用梯度下降法最小化目标函数（cost）
         fmin = minimize(fun=cost, x0=theta, args=(X, y_i, learning_rate), method='TNC', jac=gradient)
-        all_theta[i - 1, :] = fmin.x
+        all_theta[i, :] = fmin.x
 
     return all_theta
 
@@ -87,34 +99,28 @@ def predict_all(X, all_theta):
     h = sigmoid(X * all_theta.T)
     # 选取最高的那个概率为该实例的预测数字标签并构建数组
     h_argmax = np.argmax(h, axis=1)
-    # 由于该数组在训练时是基于图片的0-9而预测的，所以要+1以匹配y
-    h_argmax = h_argmax + 1
-
     return h_argmax
 
 
 if __name__ == "__main__":
-    number_of_set = 1000
-    data_set, labels = read_file()
-    formatted_data = reduce_demension(data_set)
-    formatted_data = formatted_data[:number_of_set]
-    formatted_label = labels.T
-    formatted_label = formatted_label[:number_of_set]
-    data = {'X': formatted_data, 'y': formatted_label}
+    train_set_x, train_set_y, test_set_x, test_set_y = read_file()
+    train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
+    test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
+    num = 1000
+    train_set_x = train_set_x[:num]
+    train_set_y = train_set_y[:num]
+    print(train_set_x.shape)
+    print(train_set_y.shape)
+    print(test_set_x.shape)
+    print(test_set_y.shape)
 
-    rows = data['X'].shape[0]
-    params = data['X'].shape[1]
-    all_theta = np.zeros((10, params + 1))
-    X = np.insert(data['X'], 0, values=np.ones(rows), axis=1)
-    theta = np.zeros(params + 1)
-    y_0 = np.array([1 if label == 0 else 0 for label in data['y']])
-    y_0 = np.reshape(y_0, (rows, 1))
-    X.shape, y_0.shape, theta.shape, all_theta.shape
-    np.unique(data['y'])
-    all_theta = one_vs_all(data['X'], data['y'], 10, 1)
-    # print(all_theta)
+    data = {'X': train_set_x, 'y': train_set_y}
 
-    y_pred = predict_all(data['X'], all_theta)
-    correct = [1 if a == b else 0 for (a, b) in zip(y_pred, data['y'])]
+    all_theta = one_vs_all(data['X'], data['y'], 10, 0.01)
+
+    y_pred = predict_all(test_set_x, all_theta)
+    # for a in zip(y_pred, test_set_y):
+    #     print(a)
+    correct = [1 if a == b else 0 for (a, b) in zip(y_pred, test_set_y)]
     accuracy = (sum(map(int, correct)) / float(len(correct)))
     print('accuracy = {0}%'.format(accuracy * 100))
