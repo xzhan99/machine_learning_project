@@ -5,16 +5,18 @@ from scipy.optimize import minimize
 
 
 def read_file():
-    # folder_path = '/Users/andrewzhan/Downloads/'
-    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
+    folder_path = '/Users/andrewzhan/Downloads/'
+    # folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
         train_set_x_orig = np.copy(H['data'])
+        train_set_x_orig = train_set_x_orig / 255
     with h5py.File(folder_path + 'labels_training.h5', 'r') as H:
         train_set_y_orig = np.copy(H['label'])
         # train_set_y_orig = train_set_y_orig.reshape(1, train_set_y_orig.shape[0])
 
     with h5py.File(folder_path + 'images_testing.h5', 'r') as H:
         test_set_x_orig = np.copy(H['data'])[:2000]
+        test_set_x_orig = test_set_x_orig / 255
     with h5py.File(folder_path + 'labels_testing_2000.h5', 'r') as H:
         test_set_y_orig = np.copy(H['label'])
         # test_set_y_orig = test_set_y_orig.reshape(1, test_set_y_orig.shape[0])
@@ -46,6 +48,19 @@ def cost(w, X, y, learningRate):
     return the_cost
 
 
+def lost(w, X, y, learningRate):
+    m = X.shape[1]
+    z = np.dot(X, w.T)
+    A = sigmoid(z)
+    lost = np.sum(np.multiply(y, np.log(A)) + np.multiply(1 - y, np.log(1 - A))) / (-m)
+    lost = np.squeeze(lost)
+
+    # print(the_cost)
+    if np.isnan(lost):
+        return np.inf
+    return lost
+
+
 def gradient(theta, X, y, learningRate):
     theta = np.matrix(theta)
     X = np.matrix(X)
@@ -56,6 +71,7 @@ def gradient(theta, X, y, learningRate):
     error = sigmoid(X * theta.T) - y
 
     grad = ((X.T * error) / m).T + ((learningRate / m) * theta)
+    # print(grad.shape)
 
     # intercept gradient is not regularized
     grad[0, 0] = np.sum(np.multiply(error, X[:, 0])) / m
@@ -106,7 +122,7 @@ if __name__ == "__main__":
     train_set_x, train_set_y, test_set_x, test_set_y = read_file()
     train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
     test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
-    num = 1000
+    num = 30000
     train_set_x = train_set_x[:num]
     train_set_y = train_set_y[:num]
     print(train_set_x.shape)
