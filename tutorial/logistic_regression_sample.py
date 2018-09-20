@@ -58,38 +58,39 @@ def one_vs_all(x, y, num_labels):
     num_of_data = x.shape[0]
     num_of_param = x.shape[1]
 
-    # 对于k个分类器，构建k*（n+1）维向量组 (10, 785)
+    # build k classifiers, all_theta is a (10, 785) matrix
     all_theta = np.random.random((num_labels, num_of_param + 1))
 
-    # 在X第一列之前插入一列全为1的列向量作为常数项
+    # insert an all one column as the first column
     x = np.insert(x, 0, values=np.ones(num_of_data), axis=1)
 
-    # 对于y若将某个类别i拿出来之后剩下的类别构成一类
+    # classify by y, all y equals i in one class, all y doesn't equal i in one class
     for i in range(0, num_labels):
         theta = np.zeros(num_of_param + 1)
         y_i = np.array([1 if label == i else 0 for label in y])
         y_i = np.reshape(y_i, (num_of_data, 1))
 
         fmin = minimize(fun=lost, x0=theta, args=(x, y_i), method='TNC', jac=gradient_descent)
+        print(fmin.success)
         all_theta[i, :] = fmin.x
 
     return all_theta
 
 
-def predict_all(X, all_theta):
-    rows = X.shape[0]
-    params = X.shape[1]
-    num_labels = all_theta.shape[0]
-    # 与前相同，插入一列全部为1的列向量
-    X = np.insert(X, 0, values=np.ones(rows), axis=1)
-    # 转换为矩阵
-    X = np.matrix(X)
+def predict_all(x, all_theta):
+    num_of_data = x.shape[0]
+    # insert an all one column as the first column, same with training process
+    x = np.insert(x, 0, values=np.ones(num_of_data), axis=1)
+    x = np.matrix(x)
     all_theta = np.matrix(all_theta)
-    # 计算每个训练实例上每个类的类概率
-    h = sigmoid(X * all_theta.T)
-    # 选取最高的那个概率为该实例的预测数字标签并构建数组
-    h_argmax = np.argmax(h, axis=1)
-    return h_argmax
+
+    # calculate the possibility of every class
+    possibilities = sigmoid(x.dot(all_theta.T))
+
+    # choose the highest one
+    pred_label = np.argmax(possibilities, axis=1)
+
+    return pred_label
 
 
 if __name__ == "__main__":
@@ -112,3 +113,5 @@ if __name__ == "__main__":
     correct = [1 if a == b else 0 for (a, b) in zip(y_pred, test_set_y)]
     accuracy = (sum(map(int, correct)) / float(len(correct)))
     print('accuracy = {0}%'.format(accuracy * 100))
+
+    print(list(zip(test_set_y, y_pred)))
