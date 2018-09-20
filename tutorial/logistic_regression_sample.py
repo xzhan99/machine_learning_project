@@ -5,18 +5,18 @@ from scipy.optimize import minimize
 
 
 def read_file():
-    folder_path = '/Users/andrewzhan/Downloads/'
-    # folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
+    # folder_path = '/Users/andrewzhan/Downloads/'
+    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
         train_set_x_orig = np.copy(H['data'])
-        train_set_x_orig = train_set_x_orig / 255
+        train_set_x_orig = train_set_x_orig / 255.
     with h5py.File(folder_path + 'labels_training.h5', 'r') as H:
         train_set_y_orig = np.copy(H['label'])
         # train_set_y_orig = train_set_y_orig.reshape(1, train_set_y_orig.shape[0])
 
     with h5py.File(folder_path + 'images_testing.h5', 'r') as H:
         test_set_x_orig = np.copy(H['data'])[:2000]
-        test_set_x_orig = test_set_x_orig / 255
+        test_set_x_orig = test_set_x_orig / 255.
     with h5py.File(folder_path + 'labels_testing_2000.h5', 'r') as H:
         test_set_y_orig = np.copy(H['label'])
         # test_set_y_orig = test_set_y_orig.reshape(1, test_set_y_orig.shape[0])
@@ -27,43 +27,23 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 
-def cost(w, X, y, learningRate):
-    # w = np.matrix(w)
-    # X = np.matrix(X)
-    # y = np.matrix(y)
-    # first = np.multiply(-y, np.log(sigmoid(X * w.T)))
-    # second = np.multiply((1 - y), np.log(1 - sigmoid(X * w.T)))
-    # reg = (learningRate / 2 * len(X)) * np.sum(np.power(w[:, 1:w.shape[1]], 2))
-    # the_cost = np.sum(first - second) / (len(X)) + reg
-    # print(the_cost)
+def lost(w, X, y, learning_rate):
     m = X.shape[1]
     z = np.dot(X, w.T)
-    A = sigmoid(z)
-    the_cost = np.sum(np.multiply(y, np.log(A)) + np.multiply(1 - y, np.log(1 - A))) / (-m)
-    the_cost = np.squeeze(the_cost)
+    exp_z = sigmoid(z)
+    the_lost = np.sum(np.multiply(y, np.log(exp_z)) + np.multiply(1 - y, np.log(1 - exp_z))) / (-m)
+    the_lost = np.squeeze(the_lost)
 
     # print(the_cost)
-    if np.isnan(the_cost):
+    if np.isnan(the_lost):
         return np.inf
-    return the_cost
-
-
-def lost(w, X, y, learningRate):
-    m = X.shape[1]
-    z = np.dot(X, w.T)
-    A = sigmoid(z)
-    lost = np.sum(np.multiply(y, np.log(A)) + np.multiply(1 - y, np.log(1 - A))) / (-m)
-    lost = np.squeeze(lost)
-
-    # print(the_cost)
-    if np.isnan(lost):
-        return np.inf
-    return lost
+    return the_lost
 
 
 def gradient(theta, X, y, learningRate):
     theta = np.matrix(theta)
     X = np.matrix(X)
+    print(X)
     y = np.matrix(y)
     m = len(X)
 
@@ -71,12 +51,24 @@ def gradient(theta, X, y, learningRate):
     error = sigmoid(X * theta.T) - y
 
     grad = ((X.T * error) / m).T + ((learningRate / m) * theta)
-    # print(grad.shape)
+    print(grad.shape)
 
     # intercept gradient is not regularized
+    print(X[:, 0])
     grad[0, 0] = np.sum(np.multiply(error, X[:, 0])) / m
-
+    print(grad.shape)
     return np.array(grad).ravel()
+
+
+def logistic_loss_and_grad(theta, X, y):
+    theta = np.matrix(theta)
+    X = np.matrix(X)
+    y = np.matrix(y)
+
+    temp = -lost(theta, X, y) + y
+    print('temp: ', temp.shape)
+    dloss = -np.sum(np.multiply(temp, X), axis=0)
+    return dloss
 
 
 def one_vs_all(X, y, num_labels, learning_rate):
@@ -96,7 +88,8 @@ def one_vs_all(X, y, num_labels, learning_rate):
         y_i = np.reshape(y_i, (rows, 1))
 
         # 采用梯度下降法最小化目标函数（cost）
-        fmin = minimize(fun=cost, x0=theta, args=(X, y_i, learning_rate), method='TNC', jac=gradient)
+        # fmin = minimize(fun=lost, x0=theta, args=(X, y_i), method='TNC', jac=logistic_loss_and_grad)
+        fmin = minimize(fun=lost, x0=theta, args=(X, y_i, learning_rate), method='TNC', jac=gradient)
         all_theta[i, :] = fmin.x
 
     return all_theta
@@ -122,7 +115,7 @@ if __name__ == "__main__":
     train_set_x, train_set_y, test_set_x, test_set_y = read_file()
     train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
     test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
-    num = 30000
+    num = 100
     train_set_x = train_set_x[:num]
     train_set_y = train_set_y[:num]
     print(train_set_x.shape)
@@ -132,7 +125,7 @@ if __name__ == "__main__":
 
     data = {'X': train_set_x, 'y': train_set_y}
 
-    all_theta = one_vs_all(data['X'], data['y'], 10, 0.01)
+    all_theta = one_vs_all(data['X'], data['y'], 10, 0.000001)
 
     y_pred = predict_all(test_set_x, all_theta)
     # for a in zip(y_pred, test_set_y):
