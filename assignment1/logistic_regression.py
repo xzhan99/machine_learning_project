@@ -101,20 +101,20 @@ if __name__ == "__main__":
     train_set_x, train_set_y, test_set_x, test_set_y = read_file()
     train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
     test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
-    num = 3000
+    num = 30000
     train_set_x = train_set_x[:num]
     train_set_y = train_set_y[:num]
-    # print(train_set_x.shape)
-    # print(train_set_y.shape)
-    # print(test_set_x.shape)
-    # print(test_set_y.shape)
+    print(train_set_x.shape)
+    print(train_set_y.shape)
+    print(test_set_x.shape)
+    print(test_set_y.shape)
 
     all_theta = one_vs_all(train_set_x, train_set_y, 10)
 
     y_pred = predict_all(test_set_x, all_theta)
 
-    correct = [1 if a == b else 0 for (a, b) in zip(y_pred, test_set_y)]
-    accuracy = (sum(map(int, correct)) / float(len(correct)))
-    print('accuracy = {0}%'.format(accuracy * 100))
+    correct_rate = [1 if y_hat == y else 0 for (y_hat, y) in zip(y_pred, test_set_y)]
+    accuracy = (sum(correct_rate) / test_set_y.shape[0])
+    print('accuracy = ', accuracy * 100, '%')
 
     # print(list(zip(test_set_y, y_pred)))
