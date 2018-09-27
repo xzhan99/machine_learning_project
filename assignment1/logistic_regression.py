@@ -5,8 +5,8 @@ from scipy.optimize import minimize
 
 
 def read_file():
-    # folder_path = '/Users/andrewzhan/Downloads/'
-    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
+    folder_path = '/Users/andrewzhan/Downloads/'
+    # folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
         train_set_x_orig = np.copy(H['data'])
         train_set_x_orig = train_set_x_orig / 255.
@@ -49,10 +49,10 @@ def gradient_descent(theta, x, y):
 
     dloss = np.sum(np.multiply((exp_z - y), x), axis=0)  # (1, 785)
 
-    return dloss.ravel()
+    return dloss
 
 
-def one_vs_all(x, y, num_labels):
+def train(x, y, num_labels):
     num_of_data = x.shape[0]
     num_of_param = x.shape[1]
 
@@ -75,13 +75,12 @@ def one_vs_all(x, y, num_labels):
             theta_min = minimize(fun=lost, x0=theta, args=(x_j, y_j), method='TNC', jac=gradient_descent)
             # print(theta_min.success)
             theta = theta_min.x
-
         all_theta[i, :] = theta_min.x
 
     return all_theta
 
 
-def predict_all(x, all_theta):
+def predict(x, all_theta):
     num_of_data = x.shape[0]
     # insert an all one column as the first column, same with training process
     x = np.insert(x, 0, values=np.ones(num_of_data), axis=1)
@@ -92,16 +91,16 @@ def predict_all(x, all_theta):
     possibilities = sigmoid(x.dot(all_theta.T))
 
     # choose the highest one
-    pred_label = np.argmax(possibilities, axis=1)
+    result = np.argmax(possibilities, axis=1)
 
-    return pred_label
+    return result
 
 
 if __name__ == "__main__":
     train_set_x, train_set_y, test_set_x, test_set_y = read_file()
     train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
     test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
-    num = 30000
+    num = 100
     train_set_x = train_set_x[:num]
     train_set_y = train_set_y[:num]
     print(train_set_x.shape)
@@ -109,11 +108,10 @@ if __name__ == "__main__":
     print(test_set_x.shape)
     print(test_set_y.shape)
 
-    all_theta = one_vs_all(train_set_x, train_set_y, 10)
+    all_theta = train(train_set_x, train_set_y, 10)
 
-    y_pred = predict_all(test_set_x, all_theta)
-
-    correct_rate = [1 if y_hat == y else 0 for (y_hat, y) in zip(y_pred, test_set_y)]
+    results = predict(test_set_x, all_theta)
+    correct_rate = [1 if y_hat == y else 0 for (y_hat, y) in zip(results, test_set_y)]
     accuracy = (sum(correct_rate) / test_set_y.shape[0])
     print('accuracy = ', accuracy * 100, '%')
 
