@@ -5,8 +5,8 @@ from scipy.optimize import minimize
 
 
 def read_file():
-    folder_path = '/Users/andrewzhan/Downloads/'
-    # folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
+    # folder_path = '/Users/andrewzhan/Downloads/'
+    folder_path = 'C:\\Users\\18701\\Desktop\\machine learning\\'
     with h5py.File(folder_path + 'images_training.h5', 'r') as H:
         train_set_x_orig = np.copy(H['data'])
         train_set_x_orig = train_set_x_orig / 255.
@@ -19,6 +19,21 @@ def read_file():
     with h5py.File(folder_path + 'labels_testing_2000.h5', 'r') as H:
         test_set_y_orig = np.copy(H['label'])
     return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig
+
+
+def svd_reconstruction(x):
+    n_components = 50
+    U, s, Vt = np.linalg.svd(x, full_matrices=False)
+    S = np.diag(s)
+    x_reconstructed = U[0:U.shape[0], 0:n_components] \
+        .dot(S[0:n_components, 0:n_components]) \
+        .dot(Vt[0:n_components, 0:Vt.shape[1]])
+    SSE = np.sum((x - x_reconstructed) ** 2)
+    comp_ratio = (x.shape[1] * n_components + n_components + x.shape[0] * n_components) / (
+            x.shape[1] * x.shape[0])
+    print('If we choose {} dominant singular value/s;\n SSE = {} and\n compresion ratio = {}\n\n' \
+          .format(n_components, SSE, np.round(comp_ratio, 10)))
+    return x_reconstructed
 
 
 def sigmoid(z):
@@ -48,6 +63,8 @@ def gradient_descent(theta, x, y):
     exp_z = sigmoid(z)  # (n, 1)
 
     dloss = np.sum(np.multiply((exp_z - y), x), axis=0)  # (1, 785)
+
+
 
     return dloss
 
@@ -100,13 +117,15 @@ if __name__ == "__main__":
     train_set_x, train_set_y, test_set_x, test_set_y = read_file()
     train_set_x = train_set_x.reshape(train_set_x.shape[0], -1)
     test_set_x = test_set_x.reshape(test_set_x.shape[0], -1)
-    num = 100
+    num = 30000
     train_set_x = train_set_x[:num]
     train_set_y = train_set_y[:num]
     print(train_set_x.shape)
     print(train_set_y.shape)
     print(test_set_x.shape)
     print(test_set_y.shape)
+
+    train_set_x = svd_reconstruction(train_set_x)
 
     all_theta = train(train_set_x, train_set_y, 10)
 
