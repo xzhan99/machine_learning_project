@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as pl
-
 
 
 def read_file():
@@ -15,52 +15,66 @@ def read_file():
     return adult, adult_test
 
 
-def reformat(set):
-    set = set.replace(regex=[r'<=50K\.'], value='<=50K')
-    set = set.replace(regex=[r'>50K\.'], value='>50K')
-    set['label'] = set.result.apply(lambda x: 1 if '<=50K' in x else 0)
-    # print(set)
-    return set
+def reformat(data_set):
+    data_set = data_set.replace(regex=[r'<=50K\.'], value='<=50K')
+    data_set = data_set.replace(regex=[r'>50K\.'], value='>50K')
+    data_set['label'] = data_set.result.apply(lambda x: 1 if '<=50K' in x else 0)
+    set_y = data_set['label']
+    set_x = data_set[["age", "workclass", "education", "education-num", "marital-status", "occupation",
+                      "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week",
+                      "native-country"]]
+    return set_x, set_y
+
+
+def split_train_set(data_set):
+    data_set['label'] = data_set.result.apply(lambda x: 1 if '<=50K' in x else 0)
+
+    splitted_set = []
+    for i in range(10):
+        sample = train_set.sample(frac=0.1, replace=False)
+        splitted_set.append(sample)
+
+    return splitted_set
+
+
+def reform_train_test_set(splitted_set, test_pos):
+    test = splitted_set[test_pos]
+    train = pd.DataFrame(columns=["age", "workclass", "education", "education-num", "marital-status", "occupation",
+                                  "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week",
+                                  "native-country"])
+    for i in range(10):
+        if i != test_pos:
+            train = pd.concat([train, splitted_set[i]], ignore_index=True, sort=False)
+    return train, test
 
 
 if __name__ == '__main__':
-    train_set, test_set = read_file()
+    train_set, final_test_set = read_file()
     print(train_set.shape)
-    print(test_set.shape)
-    train_set = reformat(train_set)
-    print('-------------------------------')
-    test_set = reformat(test_set)
-    print(train_set.shape)
-    print(test_set.shape)
+    print(final_test_set.shape)
 
-    train_set_y = train_set['label']
-    train_set_x = train_set[["age", "workclass", "education", "education-num", "marital-status", "occupation",
-                             "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week",
-                             "native-country"]]
-    test_set_y = test_set['label']
-    test_set_x = test_set[["age", "workclass", "education", "education-num", "marital-status", "occupation",
-                           "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week",
-                           "native-country"]]
-    dict_vect = DictVectorizer(sparse=False)
-    train_set_x = dict_vect.fit_transform(train_set_x.to_dict(orient='record'))
-    test_set_x = dict_vect.transform(test_set_x.to_dict(orient='record'))
+    splitted_train_set = split_train_set(train_set)
 
-    maxdepth = 40
-    depths = np.arange(1, maxdepth)
-    training_scores = []
-    testing_scores = []
-    for depth in depths:
-        clf = DecisionTreeClassifier(max_depth=depth)
-        clf.fit(train_set_x, train_set_y)
-        training_scores.append(clf.score(train_set_x, train_set_y))
-        testing_scores.append(clf.score(test_set_x, test_set_y))
+    scores = []
+    for i in range(10):
+        train_set, test_set = reform_train_test_set(splitted_train_set, i)
+        train_set_x, train_set_y = reformat(train_set)
+        test_set_x, test_set_y = reformat(test_set)
+        final_test_set_x, final_test_set_y = reformat(final_test_set)
 
-    fig = pl.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    ax.plot(depths, training_scores, label="traing score", marker='o')
-    ax.plot(depths, testing_scores, label="testing score", marker='*')
-    ax.set_xlabel("maxdepth")
-    ax.set_ylabel("score")
-    ax.set_title("Decision Tree Classification")
-    ax.legend(framealpha=0.5, loc='best')
-    pl.show()
+        dict_vect = DictVectorizer(sparse=False)
+        train_set_x = dict_vect.fit_transform(train_set_x.to_dict(orient='record'))
+        test_set_x = dict_vect.transform(test_set_x.to_dict(orient='record'))
+        final_test_set_x = dict_vect.transform(final_test_set_x.to_dict(orient='record'))
+
+        classifier = DecisionTreeClassifier(max_depth=11)
+        classifier.fit(train_set_x, train_set_y)
+        scores.append({'i': i, 'score': classifier.score(test_set_x, test_set_y)})
+    print(scores)
+    scores = sorted(scores, key=lambda x: x['score'], reverse=True)
+    print(scores)
+    print('aver = ', sum([x['score'] for x in scores]) / 10)
+    print('final = ', classifier.score(final_test_set_x, final_test_set_y))
+
+    # print(classifier.score(train_set_x, train_set_y))
+    # print(classifier.score(test_set_x, test_set_y))
