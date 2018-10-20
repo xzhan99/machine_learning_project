@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, cross_val_score
 import matplotlib.pyplot as pl
 
 
@@ -23,7 +23,15 @@ def reformat(data_set):
     set_x = data_set[["age", "workclass", "education", "education-num", "marital-status", "occupation",
                       "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week",
                       "native-country"]]
+    set_x = replace_nan(set_x)
     return set_x, set_y
+
+
+def replace_nan(set_x):
+    set_x = set_x.replace(regex=[r'\?|\.|\$'], value=np.nan)
+    set_x = set_x.fillna(set_x.mean())
+    set_x = set_x.fillna(method="ffill")
+    return set_x
 
 
 def split_train_set(data_set):
@@ -50,31 +58,48 @@ def reform_train_test_set(splitted_set, test_pos):
 
 if __name__ == '__main__':
     train_set, final_test_set = read_file()
-    print(train_set.shape)
-    print(final_test_set.shape)
 
-    splitted_train_set = split_train_set(train_set)
+    train_set_x, train_set_y = reformat(train_set)
+    final_test_set_x, final_test_set_y = reformat(final_test_set)
+    print(train_set_x)
 
-    scores = []
-    for i in range(10):
-        train_set, test_set = reform_train_test_set(splitted_train_set, i)
-        train_set_x, train_set_y = reformat(train_set)
-        test_set_x, test_set_y = reformat(test_set)
-        final_test_set_x, final_test_set_y = reformat(final_test_set)
+    dict_vect = DictVectorizer(sparse=False)
+    train_set_x = dict_vect.fit_transform(train_set_x.to_dict(orient='record'))
+    final_test_set_x = dict_vect.transform(final_test_set_x.to_dict(orient='record'))
 
-        dict_vect = DictVectorizer(sparse=False)
-        train_set_x = dict_vect.fit_transform(train_set_x.to_dict(orient='record'))
-        test_set_x = dict_vect.transform(test_set_x.to_dict(orient='record'))
-        final_test_set_x = dict_vect.transform(final_test_set_x.to_dict(orient='record'))
+    classifier = DecisionTreeClassifier(max_depth=11)
+    classifier.fit(train_set_x, train_set_y)
+    kf = KFold(n_splits=10)
+    result = cross_val_score(classifier, train_set_x, train_set_y, cv=kf, scoring='accuracy')
+    print(result.mean())
+    print(classifier.score(final_test_set_x, final_test_set_y))
 
-        classifier = DecisionTreeClassifier(max_depth=11)
-        classifier.fit(train_set_x, train_set_y)
-        scores.append({'i': i, 'score': classifier.score(test_set_x, test_set_y)})
-    print(scores)
-    scores = sorted(scores, key=lambda x: x['score'], reverse=True)
-    print(scores)
-    print('aver = ', sum([x['score'] for x in scores]) / 10)
-    print('final = ', classifier.score(final_test_set_x, final_test_set_y))
+
+    # splitted_train_set = split_train_set(train_set)
+    # scores = []
+    # for i in range(10):
+    #     train_set, test_set = reform_train_test_set(splitted_train_set, i)
+    #     train_set_x, train_set_y = reformat(train_set)
+    #     test_set_x, test_set_y = reformat(test_set)
+    #     final_test_set_x, final_test_set_y = reformat(final_test_set)
+    #
+    #     dict_vect = DictVectorizer(sparse=False)
+    #     train_set_x = dict_vect.fit_transform(train_set_x.to_dict(orient='record'))
+    #     test_set_x = dict_vect.transform(test_set_x.to_dict(orient='record'))
+    #     final_test_set_x = dict_vect.transform(final_test_set_x.to_dict(orient='record'))
+    #
+    #     # train_set_x = svd_reconstruction(train_set_x)
+    #     # test_set_x = svd_reconstruction(test_set_x)
+    #     # final_test_set_x = svd_reconstruction(final_test_set_x)
+    #
+    #     classifier = DecisionTreeClassifier(max_depth=11)
+    #     classifier.fit(train_set_x, train_set_y)
+    #     scores.append({'i': i, 'score': classifier.score(test_set_x, test_set_y)})
+    # print(scores)
+    # scores = sorted(scores, key=lambda x: x['score'], reverse=True)
+    # print(scores)
+    # print('aver = ', sum([x['score'] for x in scores]) / 10)
+    # print('final = ', classifier.score(final_test_set_x, final_test_set_y))
 
     # print(classifier.score(train_set_x, train_set_y))
     # print(classifier.score(test_set_x, test_set_y))
